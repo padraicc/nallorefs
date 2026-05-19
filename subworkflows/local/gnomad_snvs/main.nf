@@ -1,6 +1,7 @@
 include { MD5SUM as MD5SUM_GNOMAD_SNVS                       } from '../../../modules/nf-core/md5sum/main'
 include { BCFTOOLS_ANNOTATE as BCFTOOLS_ANNOTATE_GNOMAD_SNVS } from '../../../modules/nf-core/bcftools/annotate/main'
-include { BCFTOOLS_CONCAT                                    } from '../../../modules/nf-core/bcftools/concat/main' 
+include { BCFTOOLS_CONCAT                                    } from '../../../modules/nf-core/bcftools/concat/main'
+include { BCFTOOLS_SORT                                      } from '../../../modules/nf-core/bcftools/sort/main'
 include { WGET as WGET_GNOMAD_SNVS                           } from '../../../modules/local/wget/'
 
 workflow GNOMAD_SNVS {
@@ -39,18 +40,18 @@ workflow GNOMAD_SNVS {
         'gnomad.genomes.v4.1.sites.chrX.vcf.bgz'  : '8b91766906865b0795c653af51cb73b8',
         'gnomad.genomes.v4.1.sites.chrY.vcf.bgz'  : '1ffb9c683674f41ff7cf524e5bb56bb8'
     ]
-    
-    // Only executed if remote path 
+
+    // Only executed if remote path
     WGET_GNOMAD_SNVS (
         ch_gnomad_snvs_remote
     )
-    
+
     ch_gnomad_snvs_local
         .mix(WGET_GNOMAD_SNVS.out.download)
         .set { ch_gnomad_snvs }
-    
+
     MD5SUM_GNOMAD_SNVS (
-        ch_gnomad_snvs, 
+        ch_gnomad_snvs,
         false
     )
     ch_versions = ch_versions.mix(MD5SUM_GNOMAD_SNVS.out.versions)
@@ -68,7 +69,7 @@ workflow GNOMAD_SNVS {
         []
     )
     ch_versions = ch_versions.mix(BCFTOOLS_ANNOTATE_GNOMAD_SNVS.out.versions)
-    
+
     BCFTOOLS_ANNOTATE_GNOMAD_SNVS.out.vcf
         .map { _meta, bcf -> [ [ 'id': 'gnomad_snvs' ], bcf ] }
         .groupTuple()
@@ -78,11 +79,15 @@ workflow GNOMAD_SNVS {
     BCFTOOLS_CONCAT (
         ch_bcftools_concat_gnomad
     )
-    ch_versions = ch_versions.mix(BCFTOOLS_CONCAT.out.versions)
- 
+
+    BCFTOOLS_SORT (
+        BCFTOOLS_CONCAT.out.vcf
+    )
+    ch_versions = ch_versions.mix(BCFTOOLS_SORT.out.versions)
+
     emit:
-    vcf      = BCFTOOLS_CONCAT.out.vcf // channel: [ val(meta), path(vcf) ]
-    tbi      = BCFTOOLS_CONCAT.out.tbi // channel: [ val(meta), path(vcf) ]
+    vcf      = BCFTOOLS_SORT.out.vcf // channel: [ val(meta), path(vcf) ]
+    tbi      = BCFTOOLS_SORT.out.tbi // channel: [ val(meta), path(vcf) ]
     versions = ch_versions             // channel: [ versions.yml ]
 }
 
