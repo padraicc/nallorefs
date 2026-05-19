@@ -83,7 +83,6 @@ workflow GNOMAD_SNVS {
     BCFTOOLS_SORT (
         BCFTOOLS_CONCAT.out.vcf
     )
-    ch_versions = ch_versions.mix(BCFTOOLS_SORT.out.versions)
 
     emit:
     vcf      = BCFTOOLS_SORT.out.vcf // channel: [ val(meta), path(vcf) ]
